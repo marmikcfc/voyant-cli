@@ -37,12 +37,20 @@ As well as dynamic bet sizing algorithm
 
 class MyStrategy(BaseStrategy):
     """docstring for MyStrategy"""
-    def __init__(self,basket):
+    def __init__(self):
         self.model_name = "double_dqn_google"
-        self.basket = basket
         self.data = []
         self.bars = []
         self.state_offset = 0
+        self.position_sizing=0.1
+        self.take_profit=1.4
+        self.stop_loss=0.8
+        self.datafeed_frequency="1min"
+        self.universe=["GOOG"]
+        self.optimization_params=None
+
+
+
     def before_trading_starts(self):
         pass
             
@@ -75,13 +83,13 @@ class MyStrategy(BaseStrategy):
             #BUY
             if action == 1:
                 agent.inventory.append(self.data)
-                signal = SignalEvent("GOOG", bars[-1]['datetime'], "LONG",self.data[-1])
+                signal = SignalEvent(self.universe[0], bars[-1]['datetime'], "LONG",self.data[-1])
                 print("BUY")
 
             #SELL
             elif action == 2 and len(agent.inventory) > 0:
                 bought_price = agent.inventory.pop(0)
-                signal = SignalEvent("GOOG", bars[-1]['datetime'], "EXIT_LONG",self.data[-1 ])
+                signal = SignalEvent(self.universe[0], bars[-1]['datetime'], "EXIT_LONG",self.data[-1 ])
                 print("SELL")
                 
 

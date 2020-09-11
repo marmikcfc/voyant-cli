@@ -31,42 +31,55 @@ class InitCommand extends Command {
   ));
 
 
- let login_information = [
+ let strategy_type = [
  {
-    type: 'input',
-    name: 'email',
-    message: "Looks like you haven't signed in yet. So, what's your registered email-id? \n"
+    type: 'list',
+    name: 'type',
+    message: 'What Type of Algorithm?',
+    choices: ['Pylivetrader', 'Backtrader', 'Other'],
+    filter: function(val) {
+      return val.toLowerCase();
+    }
   },
 
-  {
-    type: 'password',
-    name: 'password',
-    message: "What about the password? \n"
-  },
-  {
-    type: 'input',
-    name: 'name',
-    message: "Name of the Strategy? \n"
-  }
  ]
 
 var req = {}
 
 
-getInstalledPath('voyant-cli').then((path) => {
+inquirer.prompt(strategy_type).then(answer => {
+
+  getInstalledPath('voyant-cli').then((path) => {
             console.log(path)
+            
+            if (answer['type'] === "pylivetrader"){
+            shell.cp(path+"/bin/pylivetraderStrategy.py", './');
+
+          }
+
+          else if (answer['type'] === "backtrader"){
+            shell.cp(path+"/bin/backtraderStrategy.py", './');
+
+          }
+
+          else if (answer['type'] === "other"){
             shell.cp(path+"/bin/main.py", './');
 
-            shell.exec("git init");
+          }
+
+          shell.exec("git init");
+          shell.mkdir("/tmp/voyant/")
+          console.log(chalk.yellow("Initialized Successfully!"));
+
             
 
-            shell.mkdir("/tmp/voyant/")
+          }).catch((err) => {
+              console.log(err);
+          })
 
-            
 
-            console.log(chalk.yellow("Initialized Successfully!"));
 
-          });
+})
 
    
     

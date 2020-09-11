@@ -26,6 +26,12 @@ const {sign, verify} = require('jsonwebtoken');
   Check if strategy exists
 */
 
+
+const camalize = (str) =>  {
+    return str.toLowerCase().replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase());
+}
+
+
 const loginPrompt = () => {
       let login_information = [{
     type: 'input',
@@ -56,7 +62,15 @@ const loginPrompt = () => {
             cred["token"] = resp.data.token;
             cred["username"] = answer.username;
             fs.writeFileSync(home+ '/.voyant/credentials.json', JSON.stringify(cred));
-            makeStrategy();
+            if(fs.existsSync('./.strategyDetails')) {
+            makeStrategy(1);
+          }
+          else{
+
+            makeStrategy(0);
+
+          }
+
           }
 
           }).catch(err =>{
@@ -82,7 +96,34 @@ axios.post("http://localhost:3000/voyant/api/strategy",strategy,{
 }
 
 
-const makeStrategy = () => {
+const pushRepo =(username=null,strategyName=null) => {
+
+  shell.exec("git add .");
+  shell.exec("git commit -m \" new commit\"");
+
+  if (username != null && strategyName != null){
+    shell.exec("git remote add voyant http://localhost:7005/"+username+"/"+strategyName +".git");
+
+    let strategyDeets = {};
+    strategyDeets["username"] = username;
+    strategyDeets["strategyName"] = strategyName;
+
+    fs.writeFileSync(home+ '/.voyant/strategyDetails.json', JSON.stringify(strategyDeets));
+  }
+  
+  shell.exec("git push voyant master");
+
+}
+
+const makeStrategy = (type) => {
+
+   if(!fs.existsSync('./.git'))
+    {
+      console.log("please do a voyant-cli init first");
+      return;
+    }
+
+
 
 
   let strategyQuestions = [
@@ -104,16 +145,6 @@ const makeStrategy = () => {
     message: "Give a coma seperated list of all the external APIs you've used. Ex: IEX (Press enter if you've used none)\n"
   },
 
-  {
-    type: 'list',
-    name: 'type',
-    message: 'What Type of Algorithm?',
-    choices: ['Pylivetrader', 'Backtrader', 'None'],
-    filter: function(val) {
-      return val.toLowerCase();
-    }
-  },
-
 
   {
     type: 'list',
@@ -124,7 +155,17 @@ const makeStrategy = () => {
       return val.toLowerCase();
     }
 
-  }];
+  },
+  {
+    type: 'list',
+    name: 'country',
+    message: 'Which equities does this algorithm deal with?',
+    choices: ['US Equities', 'Indian equities'],
+    filter: function(val) {
+      return val.toLowerCase();
+    }
+  }
+];
 
   let path = home+ "/.voyant/";
   let jsonData = JSON.parse(fs.readFileSync(path+'credentials.json'));
@@ -132,27 +173,42 @@ const makeStrategy = () => {
   strategy["username"] = jsonData["username"];
   let token = jsonData["token"];
 
+  if (type ===1){
+
+    console.log("TYPE ==== 1")
+
+    pushRepo();
+    return;
+  }
 
   inquirer.prompt(strategyQuestions).then(answer => {
 
     strategy["name"] = answer["strategyName"];
     strategy["desc"] = answer["strategyDescription"];
     strategy["apis"] = answer["apis"].split(",");
-    strategy["type"] = answer["type"];
+    strategy["equitiesCountry"] = answer["country"];
 
-    if(!fs.existsSync('./.git'))
-    {
-      shell.exec("git init");
+    if (fs.existsSync('./backtraderStrategy.py')){
+      strategy['type'] = "backtrader";
     }
+    else if (fs.existsSync('./main.py')){
+      strategy['type'] = 'none' ;
+    }
+
+    else if (fs.existsSync('./pylivetraderStrategy.py')){
+      strategy['type'] = 'pylivetrader';
+    }
+    else{
+      console.log("not a valid strategy type")
+      return;
+    }
+
     
     
+    pushRepo(strategy["username"],camalize(strategy["name"]))
+    
 
-    shell.exec("git add .");
-    shell.exec("git commit -m \" new commit\"");
-    shell.exec("git remote add voyant http://localhost:7005/"+strategy["username"]+"/"+strategy["name"] +".git");
-    shell.exec("git push voyant master");
-
-    strategy["url"]= "http://localhost:7005/"+strategy["username"]+"/"+strategy["name"]+".git";
+    strategy["url"]= "http://localhost:7005/"+strategy["username"]+"/"+camalize(strategy["name"])+".git";
     strategy["isIntraday"] = answer["isIntraday"]
     
     postStrategy(strategy,token);
@@ -188,7 +244,16 @@ let JWT_SECRET="X4oiXd5PxJWq69"
           loginPrompt();
         }
         else{
-          makeStrategy();
+
+          if(fs.existsSync('./.strategyDetails')) {
+            makeStrategy(1);
+          }
+          else{
+
+            makeStrategy(0);
+
+          }
+          
         }
     });
 
