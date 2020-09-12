@@ -62,7 +62,7 @@ const loginPrompt = () => {
             cred["token"] = resp.data.token;
             cred["username"] = answer.username;
             fs.writeFileSync(home+ '/.voyant/credentials.json', JSON.stringify(cred));
-            if(fs.existsSync('./.strategyDetails')) {
+            if(fs.existsSync('./strategyDetails.json')) {
             makeStrategy(1);
           }
           else{
@@ -96,19 +96,15 @@ axios.post("http://localhost:3000/voyant/api/strategy",strategy,{
 }
 
 
-const pushRepo =(username=null,strategyName=null) => {
+const pushRepo =(strategyDetails = null) => {
 
   shell.exec("git add .");
   shell.exec("git commit -m \" new commit\"");
 
-  if (username != null && strategyName != null){
-    shell.exec("git remote add voyant http://localhost:7005/"+username+"/"+strategyName +".git");
+  if (strategyDetails != null){
 
-    let strategyDeets = {};
-    strategyDeets["username"] = username;
-    strategyDeets["strategyName"] = strategyName;
 
-    fs.writeFileSync(home+ '/.voyant/strategyDetails.json', JSON.stringify(strategyDeets));
+    shell.exec("git remote add voyant http://localhost:7005/"+strategyDetails["username"]+"/"+camalize(strategyDetails["name"]) +".git");
   }
   
   shell.exec("git push voyant master");
@@ -164,7 +160,22 @@ const makeStrategy = (type) => {
     filter: function(val) {
       return val.toLowerCase();
     }
-  }
+  },
+
+  {
+    type: 'checkbox',
+    name: 'frequencies',
+    message: 'Which all frequencies does this algorithm deal with? [Enter space to select]',
+    choices: ['1min', '5min', '15min','30min','60min','1D'] 
+  },
+
+  {
+    type: 'input',
+    name: 'universe',
+    message: "Give a coma seperated list of all the tickers you've used. Ex: GOOG, FB ",
+    
+  },
+
 ];
 
   let path = home+ "/.voyant/";
@@ -187,6 +198,9 @@ const makeStrategy = (type) => {
     strategy["desc"] = answer["strategyDescription"];
     strategy["apis"] = answer["apis"].split(",");
     strategy["equitiesCountry"] = answer["country"];
+    strategy["datafeed_frequencies"] = answer["frequencies"];
+    strategy["universe"] = answer["universe"];
+    
 
     if (fs.existsSync('./backtraderStrategy.py')){
       strategy['type'] = "backtrader";
@@ -203,13 +217,16 @@ const makeStrategy = (type) => {
       return;
     }
 
+    strategy["isIntraday"] = answer["isIntraday"]
+    fs.writeFileSync('./strategyDetails.json', JSON.stringify(strategy));
     
-    
-    pushRepo(strategy["username"],camalize(strategy["name"]))
+    pushRepo(strategy)
     
 
+
+
     strategy["url"]= "http://localhost:7005/"+strategy["username"]+"/"+camalize(strategy["name"])+".git";
-    strategy["isIntraday"] = answer["isIntraday"]
+    
     
     postStrategy(strategy,token);
     
@@ -245,7 +262,7 @@ let JWT_SECRET="X4oiXd5PxJWq69"
         }
         else{
 
-          if(fs.existsSync('./.strategyDetails')) {
+          if(fs.existsSync('./strategyDetails')) {
             makeStrategy(1);
           }
           else{

@@ -52,6 +52,7 @@ class MyStrategy(bt.Strategy):
 
         self.crossdown = bt.ind.CrossDown(rsi, self.p.rsi_upper)
         self.crossup = bt.ind.CrossUp(rsi, self.p.rsi_lower)
+        
 
     def next(self):
         # if fast crosses slow to the upside
